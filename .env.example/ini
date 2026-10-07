@@ -1,0 +1,3 @@
+SECRET_KEY=your-django-secret-key-here
+DEBUG=True
+DB_NAME=cravecast_pos.sqlite3
