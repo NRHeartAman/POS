@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Menu & Recipes — CraveCast POS{% endblock %}
+
+{% block extra_css %}
+    .menu-layout { display:grid; grid-template-columns:300px minmax(0,1fr); gap:18px; align-items:start; }
+    @media (max-width: 1000px) { .menu-layout { grid-template-columns:1fr; } }
+    .table input { width:100%; min-width:80px; padding:7px 9px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font:inherit; font-size:13px; }
+    .table tr.off td { opacity:.5; }
+    .icon-btn { padding:7px 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); cursor:pointer; font-size:15px; display:inline-flex; }
+    .icon-btn:hover { color:var(--text); border-color:var(--border-hover); }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Menu &amp; Recipes</h1>
+        <p>Products on the register. Prices are VAT-inclusive. Each recipe tells the POS what to deduct from Inventory.</p>
+    </div>
+    <a href="{% url 'pos-register' %}" class="btn btn-primary"><i class='bx bx-cart'></i> Open Register</a>
+</div>
+
+<div class="menu-layout">
+    <div class="card">
+        <h3>Add Product</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div class="form-group"><label>Product name</label><input name="name" required placeholder="e.g. Wintermelon Milk Tea"></div>
+            <div class="form-group"><label>Category</label>
+                <input name="category" list="cat-list" value="Milk Tea">
+                <datalist id="cat-list">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+            </div>
+            <div class="form-group"><label>Price (₱, VAT-inclusive)</label><input name="price" type="number" min="0.01" step="0.01" required></div>
+            <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;"><i class='bx bx-plus'></i> Add to Menu</button>
+        </form>
+        <p class="muted" style="margin-top:12px;">Tip: sizes can be separate products, e.g. "Taro Milk Tea (M)" and "Taro Milk Tea (L)".</p>
+    </div>
+
+    <div class="card table-wrap">
+        <h3>Menu ({{ items|length }})</h3>
+        <table class="table">
+            <thead><tr><th>Product</th><th>Category</th><th style="width:120px;">Price (₱)</th><th>Recipe</th><th></th></tr></thead>
+            <tbody>
+            {% for m in items %}
+                <tr class="{% if not m.is_active %}off{% endif %}">
+                    <td>
+                        <form method="post" id="f{{ m.pk }}">{% csrf_token %}
+                            <input type="hidden" name="action" value="edit"><input type="hidden" name="pk" value="{{ m.pk }}">
+                        </form>
+                        <input form="f{{ m.pk }}" name="name" value="{{ m.name }}" required>
+                    </td>
+                    <td><input form="f{{ m.pk }}" name="category" value="{{ m.category }}" list="cat-list"></td>
+                    <td><input form="f{{ m.pk }}" name="price" type="number" min="0.01" step="0.01" value="{{ m.price }}" required></td>
+                    <td>
+                        <a href="{% url 'pos-recipe' m.pk %}" class="badge {% if m.recipe_count %}badge-green{% else %}badge-amber{% endif %}">
+                            {% if m.recipe_count %}{{ m.recipe_count }} ingredient{{ m.recipe_count|pluralize }}{% else %}Set recipe{% endif %}
+                        </a>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <button class="icon-btn" form="f{{ m.pk }}" type="submit" title="Save changes"><i class='bx bx-save'></i></button>
+                        <form method="post" style="display:inline;">{% csrf_token %}
+                            <input type="hidden" name="action" value="toggle"><input type="hidden" name="pk" value="{{ m.pk }}">
+                            <button class="icon-btn" type="submit" title="{% if m.is_active %}Hide from register{% else %}Show on register{% endif %}">
+                                <i class='bx {% if m.is_active %}bx-show{% else %}bx-hide{% endif %}'></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty">No products yet. Add your first one on the left.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

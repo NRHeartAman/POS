@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Transactions — CraveCast POS{% endblock %}
+
+{% block extra_css %}
+    .section-title { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:17px; font-weight:800; margin:26px 0 12px; }
+    .date-input { padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font:inherit; }
+    .or-link { color:var(--red); font-weight:600; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Transactions</h1>
+        <p>Sales and Senior Citizen / PWD discount log for {{ day|date:"F j, Y" }}</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <form method="get"><input class="date-input" type="date" name="date" value="{{ day|date:'Y-m-d' }}" onchange="this.form.submit()"></form>
+        <a href="{% url 'pos-register' %}" class="btn btn-primary"><i class='bx bx-cart'></i> Register</a>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">Transactions</div><div class="stat-value">{{ agg.count }}</div></div>
+    <div class="stat-card"><div class="stat-label">Gross Sales</div><div class="stat-value"><span class="peso">₱</span>{{ agg.gross|floatformat:2|intcomma }}</div><div class="stat-sub">before discounts</div></div>
+    <div class="stat-card"><div class="stat-label">Net Sales</div><div class="stat-value"><span class="peso">₱</span>{{ agg.net|floatformat:2|intcomma }}</div><div class="stat-sub">cash actually collected</div></div>
+    <div class="stat-card"><div class="stat-label">VAT Collected</div><div class="stat-value"><span class="peso">₱</span>{{ agg.vat|floatformat:2|intcomma }}</div></div>
+    <div class="stat-card"><div class="stat-label">Senior Discount</div><div class="stat-value"><span class="peso">₱</span>{{ agg.sc_disc|floatformat:2|intcomma }}</div><div class="stat-sub">{{ agg.sc_count }} transaction{{ agg.sc_count|pluralize }}</div></div>
+    <div class="stat-card"><div class="stat-label">PWD Discount</div><div class="stat-value"><span class="peso">₱</span>{{ agg.pwd_disc|floatformat:2|intcomma }}</div><div class="stat-sub">{{ agg.pwd_count }} transaction{{ agg.pwd_count|pluralize }}</div></div>
+    <div class="stat-card"><div class="stat-label">VAT-Exempt Sales</div><div class="stat-value"><span class="peso">₱</span>{{ agg.vat_exempt|floatformat:2|intcomma }}</div><div class="stat-sub">VAT waived ₱{{ agg.less_vat|floatformat:2|intcomma }}</div></div>
+</div>
+
+{% if top %}
+<div class="card" style="margin-bottom:6px;">
+    <h3>Best Sellers Today</h3>
+    <table class="table">
+        <thead><tr><th>Product</th><th class="n">Cups Sold</th><th class="n">Net Sales</th></tr></thead>
+        <tbody>{% for t in top %}<tr><td>{{ t.product_name }}</td><td class="n">{{ t.qty }}</td><td class="n">₱{{ t.sales|floatformat:2|intcomma }}</td></tr>{% endfor %}</tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="section-title">Senior Citizen / PWD Discount Log</div>
+<div class="card table-wrap">
+    <table class="table">
+        <thead><tr><th>OR #</th><th>Time</th><th>Type</th><th>Name</th><th>ID No.</th><th class="n">VAT-Exempt</th><th class="n">Less VAT</th><th class="n">20% Disc.</th><th class="n">Amount Paid</th></tr></thead>
+        <tbody>
+        {% for t in disc_txns %}
+            <tr>
+                <td><a class="or-link" href="{% url 'pos-receipt' t.pk %}" target="_blank">{{ t.receipt_no }}</a></td>
+                <td>{{ t.created_at|date:"h:i A" }}</td>
+                <td><span class="badge {% if t.discount_type == 'SC' %}badge-purple{% else %}badge-teal{% endif %}">{{ t.discount_type }}</span></td>
+                <td>{{ t.discount_holder_name }}</td>
+                <td>{{ t.discount_holder_id }}</td>
+                <td class="n">₱{{ t.vat_exempt_sales|floatformat:2|intcomma }}</td>
+                <td class="n pos-green">−₱{{ t.less_vat|floatformat:2|intcomma }}</td>
+                <td class="n pos-green">−₱{{ t.discount_amount|floatformat:2|intcomma }}</td>
+                <td class="n">₱{{ t.total_due|floatformat:2|intcomma }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="9" class="empty">No Senior Citizen or PWD transactions on this day.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="section-title">All Transactions</div>
+<div class="card table-wrap">
+    <table class="table">
+        <thead><tr><th>OR #</th><th>Time</th><th>Cashier</th><th>Items</th><th class="n">Gross</th><th class="n">Deductions</th><th class="n">Total</th></tr></thead>
+        <tbody>
+        {% for t in txns %}
+            <tr>
+                <td><a class="or-link" href="{% url 'pos-receipt' t.pk %}" target="_blank">{{ t.receipt_no }}</a></td>
+                <td>{{ t.created_at|date:"h:i A" }}</td>
+                <td>{{ t.cashier|default:"—" }}</td>
+                <td>{% for it in t.items.all %}{{ it.quantity }}× {{ it.product_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                <td class="n">₱{{ t.gross_amount|floatformat:2|intcomma }}</td>
+                <td class="n {% if t.discount_type %}pos-green{% endif %}">{% if t.discount_type %}−₱{{ t.total_deductions|floatformat:2|intcomma }}{% else %}—{% endif %}</td>
+                <td class="n">₱{{ t.total_due|floatformat:2|intcomma }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="empty">No sales on this day.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

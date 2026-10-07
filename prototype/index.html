@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CraveCast POS</title>
+<style>
+  :root {
+    --bg: #f6f1ea; --panel: #fffdf9; --ink: #2b2118; --muted: #7a6a5c;
+    --brand: #6b4226; --brand-2: #a0673f; --line: #e6dccf; --ok: #2f7d4f; --warn: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  #repView { display: block; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--brand); color: #fff; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 20px; letter-spacing: .5px; }
+  header nav button { background: transparent; border: 1px solid #ffffff66; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 6px; }
+  header nav button.active { background: #fff; color: var(--brand); }
+  main { display: grid; grid-template-columns: 1fr 420px; gap: 16px; padding: 16px; height: calc(100vh - 56px); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow: auto; }
+  .cats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cats button { border: 1px solid var(--line); background: #fff; padding: 6px 12px; border-radius: 20px; cursor: pointer; }
+  .cats button.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .item { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 14px 10px; cursor: pointer; text-align: left; font: inherit; }
+  .item:hover { border-color: var(--brand-2); }
+  .item b { display: block; margin-bottom: 6px; }
+  .item span { color: var(--brand-2); font-weight: 600; }
+  .order { display: flex; flex-direction: column; }
+  .lines { flex: 1; overflow: auto; }
+  .line { display: grid; grid-template-columns: 1fr auto; gap: 4px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .line .name { font-weight: 600; }
+  .line .ctrl { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+  .line .ctrl button { width: 26px; height: 26px; border: 1px solid var(--line); background: #fff; border-radius: 6px; cursor: pointer; }
+  .line .amt { text-align: right; font-weight: 600; }
+  .line .amt small { display: block; color: var(--ok); font-weight: 500; }
+  .sc { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+  .tag { background: #e7f3ec; color: var(--ok); font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; padding: 8px 10px; }
+  legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
+  label.row { display: flex; gap: 6px; align-items: center; margin: 4px 0; font-size: 14px; }
+  input[type=text], input[type=number] { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  table.sum { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.sum td { padding: 3px 0; }
+  table.sum td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  table.sum tr.disc td { color: var(--ok); }
+  table.sum tr.total td { font-size: 20px; font-weight: 700; border-top: 2px solid var(--ink); padding-top: 6px; }
+  .actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 10px; }
+  .btn { padding: 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; font: inherit; font-weight: 600; }
+  .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .err { color: var(--warn); font-size: 13px; min-height: 18px; }
+  .empty { color: var(--muted); text-align: center; padding: 30px 0; }
+  /* Receipt modal */
+  .modal { position: fixed; inset: 0; background: #0006; display: flex; align-items: center; justify-content: center; }
+  .receipt { background: #fff; width: 320px; padding: 18px; font-family: "Consolas", monospace; font-size: 12px; max-height: 90vh; overflow: auto; }
+  .receipt h2 { text-align: center; margin: 0; font-size: 16px; }
+  .receipt .c { text-align: center; }
+  .receipt hr { border: none; border-top: 1px dashed #000; }
+  .receipt .r { display: flex; justify-content: space-between; }
+  .receipt .big { font-size: 14px; font-weight: 700; }
+  .receipt-actions { display: flex; gap: 8px; margin-top: 12px; font-family: "Segoe UI", sans-serif; }
+  .receipt-actions .btn { flex: 1; }
+  /* Reports */
+  #reports table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #reports th, #reports td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; }
+  #reports td.n, #reports th.n { text-align: right; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .kpi small { color: var(--muted); display: block; }
+  .kpi b { font-size: 20px; }
+  @media print {
+    body * { visibility: hidden; }
+    .receipt, .receipt * { visibility: visible; }
+    .receipt { position: absolute; left: 0; top: 0; width: 58mm; padding: 0; }
+    .receipt-actions { display: none; }
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>☕ CraveCast POS</h1>
+  <nav>
+    <button id="navPos" class="active">Register</button>
+    <button id="navRep">Sales Report</button>
+  </nav>
+</header>
+
+<main id="posView">
+  <section class="panel">
+    <div class="cats" id="cats"></div>
+    <div class="menu" id="menu"></div>
+  </section>
+
+  <section class="panel order">
+    <div class="lines" id="lines"></div>
+
+    <fieldset>
+      <legend>Senior Citizen / PWD Discount (20% + VAT exempt)</legend>
+      <div class="grid2">
+        <label class="row"><input type="radio" name="dtype" value="SC" checked> Senior Citizen</label>
+        <label class="row"><input type="radio" name="dtype" value="PWD"> PWD</label>
+      </div>
+      <div class="grid2">
+        <input type="text" id="dName" placeholder="Name">
+        <input type="text" id="dId" placeholder="SC / PWD ID No.">
+      </div>
+      <small style="color:var(--muted)">Tick <b>SC/PWD</b> on each item the cardholder will consume.</small>
+    </fieldset>
+
+    <table class="sum" id="sum"></table>
+
+    <div class="grid2" style="margin-top:8px">
+      <label>Cash received<input type="number" id="cash" min="0" step="0.01" placeholder="0.00"></label>
+      <label>Change<input type="text" id="change" readonly></label>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="actions">
+      <button class="btn" id="clearBtn">Clear</button>
+      <button class="btn primary" id="payBtn">Pay</button>
+    </div>
+  </section>
+</main>
+
+<main id="repView" hidden>
+  <section class="panel" id="reports"></section>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="receipt" id="receipt"></div>
+</div>
+
+<script>
+// ---------- Settings ----------
+const SHOP = { name: "CraveCast Coffee", address: "Your Address Here", tin: "000-000-000-000" };
+const VAT_RATE = 0.12;       // prices on the menu are VAT-inclusive
+const SC_PWD_RATE = 0.20;    // 20% discount on the VAT-exempt price
+
+const MENU = [
+  { id: 1,  cat: "Hot Coffee",  name: "Americano",       price: 110 },
+  { id: 2,  cat: "Hot Coffee",  name: "Cappuccino",      price: 140 },
+  { id: 3,  cat: "Hot Coffee",  name: "Café Latte",      price: 145 },
+  { id: 4,  cat: "Hot Coffee",  name: "Spanish Latte",   price: 160 },
+  { id: 5,  cat: "Hot Coffee",  name: "Caramel Macchiato", price: 170 },
+  { id: 6,  cat: "Iced Coffee", name: "Iced Americano",  price: 120 },
+  { id: 7,  cat: "Iced Coffee", name: "Iced Latte",      price: 155 },
+  { id: 8,  cat: "Iced Coffee", name: "Iced Spanish Latte", price: 170 },
+  { id: 9,  cat: "Iced Coffee", name: "Iced Mocha",      price: 175 },
+  { id: 10, cat: "Non-Coffee",  name: "Matcha Latte",    price: 165 },
+  { id: 11, cat: "Non-Coffee",  name: "Chocolate",       price: 140 },
+  { id: 12, cat: "Non-Coffee",  name: "Strawberry Milk", price: 150 },
+  { id: 13, cat: "Pastries",    name: "Croissant",       price: 95  },
+  { id: 14, cat: "Pastries",    name: "Blueberry Muffin", price: 90 },
+  { id: 15, cat: "Pastries",    name: "Cinnamon Roll",   price: 110 },
+  { id: 16, cat: "Pastries",    name: "Banana Bread",    price: 85  },
+  { id: 17, cat: "Pastries",    name: "Spanish Bread",    price: 35  },
+
+];
+
+// ---------- State ----------
+let cart = [];          // { id, name, price, qty, discQty }
+let activeCat = "All";
+const $ = (id) => document.getElementById(id);
+const peso = (n) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+// ---------- Computation ----------
+// For each line: discQty units belong to the SC/PWD cardholder, the rest are regular.
+// Regular:   VATable sales = gross / 1.12, VAT = gross - VATable
+// SC/PWD:    VAT-exempt sales = gross / 1.12, then less 20% of that
+function compute() {
+  let gross = 0, regGross = 0, discGross = 0;
+  for (const l of cart) {
+    gross += l.price * l.qty;
+    discGross += l.price * l.discQty;
+    regGross += l.price * (l.qty - l.discQty);
+  }
+  const vatable = regGross / (1 + VAT_RATE);
+  const vat = regGross - vatable;
+  const vatExempt = discGross / (1 + VAT_RATE);
+  const lessVat = discGross - vatExempt;
+  const discount = vatExempt * SC_PWD_RATE;
+  const total = regGross + vatExempt - discount;
+  return {
+    gross: r2(gross), vatable: r2(vatable), vat: r2(vat),
+    vatExempt: r2(vatExempt), lessVat: r2(lessVat), discount: r2(discount),
+    total: r2(total), hasDisc: discGross > 0,
+  };
+}
+
+// ---------- Rendering ----------
+function renderCats() {
+  const cats = ["All", ...new Set(MENU.map((m) => m.cat))];
+  $("cats").innerHTML = cats.map((c) =>
+    `<button class="${c === activeCat ? "active" : ""}" data-cat="${c}">${c}</button>`).join("");
+}
+function renderMenu() {
+  const items = MENU.filter((m) => activeCat === "All" || m.cat === activeCat);
+  $("menu").innerHTML = items.map((m) =>
+    `<button class="item" data-id="${m.id}"><b>${m.name}</b><span>${peso(m.price)}</span></button>`).join("");
+}
+function renderCart() {
+  if (!cart.length) {
+    $("lines").innerHTML = `<div class="empty">No items yet — tap a menu item to add.</div>`;
+  } else {
+    $("lines").innerHTML = cart.map((l, i) => {
+      const lineGross = l.price * l.qty;
+      const discAmt = l.discQty ? r2(l.price * l.discQty - (l.price * l.discQty / (1 + VAT_RATE)) * (1 - SC_PWD_RATE)) : 0;
+      return `<div class="line">
+        <div>
+          <div class="name">${l.name} ${l.discQty ? `<span class="tag">SC/PWD ×${l.discQty}</span>` : ""}</div>
+          <div class="ctrl">
+            <button data-act="dec" data-i="${i}">−</button> ${l.qty}
+            <button data-act="inc" data-i="${i}">+</button>
+            @ ${peso(l.price)}
+            <span class="sc">SC/PWD:
+              <button data-act="ddec" data-i="${i}">−</button> ${l.discQty}
+              <button data-act="dinc" data-i="${i}">+</button>
+            </span>
+          </div>
+        </div>
+        <div class="amt">${peso(lineGross)}${discAmt ? `<small>−${peso(discAmt)}</small>` : ""}</div>
+      </div>`;
+    }).join("");
+  }
+  renderSummary();
+}
+function renderSummary() {
+  const t = compute();
+  let rows = `<tr><td>Subtotal (VAT incl.)</td><td>${peso(t.gross)}</td></tr>`;
+  if (t.hasDisc) {
+    rows += `<tr class="disc"><td>Less: VAT (12%) exempt</td><td>−${peso(t.lessVat)}</td></tr>
+             <tr class="disc"><td>Less: SC/PWD discount (20%)</td><td>−${peso(t.discount)}</td></tr>`;
+  }
+  rows += `<tr class="total"><td>TOTAL DUE</td><td>${peso(t.total)}</td></tr>`;
+  $("sum").innerHTML = rows;
+  updateChange();
+}
+function updateChange() {
+  const t = compute();
+  const cash = parseFloat($("cash").value) || 0;
+  $("change").value = cash >= t.total && t.total > 0 ? peso(r2(cash - t.total)) : "";
+}
+
+// ---------- Cart actions ----------
+function addItem(id) {
+  const m = MENU.find((x) => x.id === id);
+  const l = cart.find((x) => x.id === id);
+  if (l) l.qty++; else cart.push({ id: m.id, name: m.name, price: m.price, qty: 1, discQty: 0 });
+  renderCart();
+}
+$("lines").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-act]");
+  if (!b) return;
+  const l = cart[+b.dataset.i];
+  switch (b.dataset.act) {
+    case "inc": l.qty++; break;
+    case "dec": l.qty--; if (l.discQty > l.qty) l.discQty = l.qty; break;
+    case "dinc": if (l.discQty < l.qty) l.discQty++; break;
+    case "ddec": if (l.discQty > 0) l.discQty--; break;
+  }
+  cart = cart.filter((x) => x.qty > 0);
+  $("err").textContent = "";
+  renderCart();
+});
+$("cats").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-cat]");
+  if (!b) return;
+  activeCat = b.dataset.cat; renderCats(); renderMenu();
+});
+$("menu").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-id]");
+  if (b) addItem(+b.dataset.id);
+});
+$("cash").addEventListener("input", updateChange);
+$("clearBtn").addEventListener("click", clearOrder);
+
+function clearOrder() {
+  cart = []; $("cash").value = ""; $("dName").value = ""; $("dId").value = ""; $("err").textContent = "";
+  renderCart();
+}
+
+// ---------- Payment ----------
+function loadSales() { try { return JSON.parse(localStorage.getItem("cravecast_sales") || "[]"); } catch { return []; } }
+function saveSales(s) { try { localStorage.setItem("cravecast_sales", JSON.stringify(s)); } catch {} }
+
+$("payBtn").addEventListener("click", () => {
+  const t = compute();
+  const cash = parseFloat($("cash").value) || 0;
+  const dtype = document.querySelector("input[name=dtype]:checked").value;
+  const dName = $("dName").value.trim(), dId = $("dId").value.trim();
+  if (!cart.length) return ($("err").textContent = "Add at least one item.");
+  if (t.hasDisc && (!dName || !dId)) return ($("err").textContent = `Enter the ${dtype} cardholder's name and ID number.`);
+  if (cash < t.total) return ($("err").textContent = `Insufficient cash. Need ${peso(t.total)}.`);
+
+  const sales = loadSales();
+  const sale = {
+    no: String(sales.length + 1).padStart(6, "0"),
+    date: new Date().toISOString(),
+    items: cart.map((l) => ({ ...l })),
+    ...t, cash: r2(cash), change: r2(cash - t.total),
+    disc: t.hasDisc ? { type: dtype, name: dName, id: dId } : null,
+  };
+  sales.push(sale); saveSales(sales);
+  showReceipt(sale);
+  clearOrder();
+});
+
+function showReceipt(s) {
+  const d = new Date(s.date);
+  const r = (a, b, cls = "") => `<div class="r ${cls}"><span>${a}</span><span>${b}</span></div>`;
+  let h = `<h2>${SHOP.name}</h2>
+    <div class="c">${SHOP.address}<br>VAT REG TIN: ${SHOP.tin}</div><hr>
+    ${r("OR #" + s.no, d.toLocaleDateString("en-PH"))}${r("", d.toLocaleTimeString("en-PH"))}<hr>`;
+  for (const l of s.items) {
+    h += `<div>${l.name}</div>${r(`  ${l.qty} x ${l.price.toFixed(2)}`, (l.qty * l.price).toFixed(2))}`;
+    if (l.discQty) h += `<div>  (${l.discQty} for SC/PWD)</div>`;
+  }
+  h += `<hr>${r("Subtotal", s.gross.toFixed(2))}`;
+  if (s.hasDisc) {
+    h += r("Less VAT 12%", "-" + s.lessVat.toFixed(2)) + r(`Less ${s.disc.type} 20%`, "-" + s.discount.toFixed(2));
+  }
+  h += `<hr>${r("TOTAL DUE", s.total.toFixed(2), "big")}${r("Cash", s.cash.toFixed(2))}${r("Change", s.change.toFixed(2))}<hr>
+    ${r("VATable Sales", s.vatable.toFixed(2))}${r("VAT Amount (12%)", s.vat.toFixed(2))}
+    ${r("VAT-Exempt Sales", s.vatExempt.toFixed(2))}${r("Zero-Rated Sales", "0.00")}`;
+  if (s.hasDisc) {
+    h += `<hr>${s.disc.type === "SC" ? "Senior Citizen" : "PWD"} Name: ${s.disc.name}<br>ID No.: ${s.disc.id}<br><br>Signature: ______________`;
+  }
+  h += `<hr><div class="c">Thank you! Come again ☕</div>
+    <div class="receipt-actions"><button class="btn" id="closeR">Close</button><button class="btn primary" id="printR">Print</button></div>`;
+  $("receipt").innerHTML = h;
+  $("modal").hidden = false;
+  $("closeR").onclick = () => ($("modal").hidden = true);
+  $("printR").onclick = () => window.print();
+}
+
+// ---------- Reports ----------
+function renderReports() {
+  const sales = loadSales();
+  const today = new Date().toDateString();
+  const todays = sales.filter((s) => new Date(s.date).toDateString() === today);
+  const sum = (arr, k) => r2(arr.reduce((a, s) => a + s[k], 0));
+  const sc = todays.filter((s) => s.disc?.type === "SC"), pwd = todays.filter((s) => s.disc?.type === "PWD");
+  $("reports").innerHTML = `
+    <h2 style="margin-top:0">Today's Sales — ${new Date().toLocaleDateString("en-PH")}</h2>
+    <div class="kpis">
+      <div class="kpi"><small>Transactions</small><b>${todays.length}</b></div>
+      <div class="kpi"><small>Gross Sales</small><b>${peso(sum(todays, "gross"))}</b></div>
+      <div class="kpi"><small>Net Sales</small><b>${peso(sum(todays, "total"))}</b></div>
+      <div class="kpi"><small>VAT Collected</small><b>${peso(sum(todays, "vat"))}</b></div>
+      <div class="kpi"><small>Senior Discount (${sc.length})</small><b>${peso(sum(sc, "discount"))}</b></div>
+      <div class="kpi"><small>PWD Discount (${pwd.length})</small><b>${peso(sum(pwd, "discount"))}</b></div>
+      <div class="kpi"><small>VAT-Exempt Sales</small><b>${peso(sum(todays, "vatExempt"))}</b></div>
+    </div>
+    <h3>SC / PWD Discount Log</h3>
+    <table><tr><th>OR #</th><th>Time</th><th>Type</th><th>Name</th><th>ID No.</th><th class="n">VAT-Exempt</th><th class="n">20% Disc.</th><th class="n">Paid</th></tr>
+    ${todays.filter((s) => s.disc).map((s) => `<tr><td>${s.no}</td><td>${new Date(s.date).toLocaleTimeString("en-PH")}</td>
+      <td>${s.disc.type}</td><td>${s.disc.name}</td><td>${s.disc.id}</td><td class="n">${peso(s.vatExempt)}</td>
+      <td class="n">${peso(s.discount)}</td><td class="n">${peso(s.total)}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">None today</td></tr>`}
+    </table>
+    <h3>All Transactions Today</h3>
+    <table><tr><th>OR #</th><th>Time</th><th>Items</th><th class="n">Gross</th><th class="n">Discount</th><th class="n">Total</th></tr>
+    ${todays.map((s) => `<tr><td>${s.no}</td><td>${new Date(s.date).toLocaleTimeString("en-PH")}</td>
+      <td>${s.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</td><td class="n">${peso(s.gross)}</td>
+      <td class="n">${peso(r2(s.lessVat + s.discount))}</td><td class="n">${peso(s.total)}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">No sales yet</td></tr>`}
+    </table>`;
+}
+
+$("navPos").onclick = () => { $("posView").hidden = false; $("repView").hidden = true; $("navPos").classList.add("active"); $("navRep").classList.remove("active"); };
+$("navRep").onclick = () => { renderReports(); $("posView").hidden = true; $("repView").hidden = false; $("navRep").classList.add("active"); $("navPos").classList.remove("active"); };
+
+renderCats(); renderMenu(); renderCart();
+</script>
+</body>
+</html>

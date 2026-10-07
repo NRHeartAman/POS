@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}CraveCast POS{% endblock %}</title>
+<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+<script>
+    try { document.documentElement.dataset.theme = localStorage.getItem('pos-theme') || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+</script>
+<style>
+    :root, :root[data-theme="dark"] {
+        --bg:#080808; --surface:#111111; --surface2:#191919; --surface3:#242424;
+        --border:rgba(255,255,255,.1); --border-hover:rgba(255,255,255,.28);
+        --text:#f7f7f7; --text-muted:#a3a3a3; --text-dim:#737373;
+        --accent:#ffffff; --accent-contrast:#080808; --accent-dim:rgba(255,255,255,.1);
+        color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+        --bg:#f4f4f4; --surface:#ffffff; --surface2:#f0f0f0; --surface3:#e5e5e5;
+        --border:rgba(0,0,0,.1); --border-hover:rgba(0,0,0,.28);
+        --text:#111111; --text-muted:#5f5f5f; --text-dim:#888888;
+        --accent:#111111; --accent-contrast:#ffffff; --accent-dim:rgba(0,0,0,.08);
+        color-scheme: light;
+    }
+    :root {
+        --red:var(--accent); --red-dim:var(--accent-dim);
+        --green:var(--accent); --green-dim:var(--accent-dim);
+        --purple:var(--accent); --purple-dim:var(--accent-dim);
+        --teal:var(--accent); --teal-dim:var(--accent-dim);
+        --amber:var(--accent); --amber-dim:var(--accent-dim);
+        --blue:var(--accent); --blue-dim:var(--accent-dim);
+        --sidebar-w:230px;
+        accent-color:var(--accent);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { font-family:'Aptos', 'Aptos Display', 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); }
+    a { color:inherit; text-decoration:none; }
+
+    .sidebar { position:fixed; inset:0 auto 0 0; width:var(--sidebar-w); background:var(--surface); border-right:1px solid var(--border);
+               display:flex; flex-direction:column; z-index:100; }
+    .brand { display:flex; align-items:center; gap:10px; padding:22px 20px; border-bottom:1px solid var(--border);
+             font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-weight:800; font-size:18px; }
+    .brand i { font-size:26px; color:var(--red); }
+    .brand span span { color:var(--red); }
+    .nav-section { padding:18px 22px 6px; font-size:10px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:1.5px; }
+    .sidebar ul { list-style:none; padding:0 10px; }
+    .sidebar li a { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; color:var(--text-muted);
+                    font-size:14px; font-weight:500; transition:all .2s; }
+    .sidebar li a i { font-size:18px; width:20px; text-align:center; }
+    .sidebar li a:hover { background:var(--surface3); color:var(--text); }
+    .sidebar li.active a { background:var(--red-dim); color:var(--red); font-weight:600; }
+    .side-foot { margin-top:auto; padding:14px; border-top:1px solid var(--border); }
+    .user-chip { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; }
+    .avatar { width:34px; height:34px; border-radius:50%; background:var(--red-dim); color:var(--red); display:grid; place-items:center; font-weight:700; }
+    .user-chip small { display:block; color:var(--text-muted); font-size:11px; }
+    .side-btns { display:flex; gap:6px; }
+    .side-btns button { flex:1; padding:8px; border-radius:9px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted);
+                        font:inherit; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; }
+    .side-btns button:hover { color:var(--text); border-color:var(--border-hover); }
+
+    .content { margin-left:var(--sidebar-w); padding:28px 30px 40px; min-height:100vh; }
+    .page-header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px; margin-bottom:24px; }
+    .page-header h1 { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:26px; font-weight:800; margin-bottom:4px; }
+    .page-header p { font-size:13px; color:var(--text-muted); }
+
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; }
+    .card h3 { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:16px; font-weight:800; margin-bottom:14px; }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:14px; margin-bottom:22px; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; }
+    .stat-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px; }
+    .stat-value { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:22px; font-weight:800; }
+    .stat-sub { font-size:12px; color:var(--text-muted); margin-top:4px; }
+    .peso { font-size:.7em; opacity:.7; margin-right:1px; }
+
+    .badge { display:inline-block; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:700; }
+    .badge-red { background:var(--red-dim); color:var(--red); } .badge-green { background:var(--green-dim); color:var(--green); }
+    .badge-purple { background:var(--purple-dim); color:var(--purple); } .badge-teal { background:var(--teal-dim); color:var(--teal); }
+    .badge-amber { background:var(--amber-dim); color:var(--amber); } .badge-blue { background:var(--blue-dim); color:var(--blue); }
+
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:10px; font:inherit; font-size:13px; font-weight:600;
+           cursor:pointer; border:none; transition:all .2s; }
+    .btn-primary { background:var(--accent); color:var(--accent-contrast); } .btn-primary:hover { filter:brightness(.88); }
+    .btn-ghost { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); }
+    .btn-ghost:hover { color:var(--text); border-color:var(--border-hover); }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; }
+    .input, .form-group input, .form-group select { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+        background:var(--surface2); color:var(--text); font:inherit; font-size:13px; }
+    .input:focus, .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--red); }
+
+    .table-wrap { overflow-x:auto; }
+    .table { width:100%; border-collapse:collapse; font-size:13px; }
+    .table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    .table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .table .n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .muted { color:var(--text-muted); font-size:12px; }
+    .empty { text-align:center; padding:28px; color:var(--text-dim); font-size:13px; }
+    .pos-green { color:var(--green); }
+
+    .toasts { position:fixed; top:18px; right:18px; display:flex; flex-direction:column; gap:8px; z-index:5000; max-width:min(380px, 90vw); }
+    .toast { padding:12px 16px; border-radius:10px; font-size:13px; font-weight:500; background:var(--surface); border:1px solid var(--border);
+             box-shadow:0 6px 24px rgba(0,0,0,.25); border-left:4px solid var(--blue); animation:tin .25s ease; }
+    .toast.success { border-left-color:var(--green); } .toast.error { border-left-color:var(--red); } .toast.info { border-left-color:var(--amber); }
+    @keyframes tin { from { opacity:0; transform:translateY(-8px); } }
+
+    @media (max-width: 860px) {
+        .sidebar { position:static; width:auto; height:auto; border-right:none; border-bottom:1px solid var(--border); }
+        .sidebar ul { display:flex; flex-wrap:wrap; gap:4px; padding-bottom:10px; }
+        .nav-section, .side-foot .user-chip { display:none; }
+        .content { margin-left:0; padding:20px 16px; }
+    }
+    {% block extra_css %}{% endblock %}
+</style>
+</head>
+<body>
+{% with url=request.resolver_match.url_name %}
+<aside class="sidebar">
+    <a class="brand" href="{% url 'pos-register' %}"><i class='bx bxs-store'></i><span>Crave<span>Cast</span> POS</span></a>
+    <div class="nav-section">Selling</div>
+    <ul>
+        <li class="{% if url == 'pos-register' %}active{% endif %}"><a href="{% url 'pos-register' %}"><i class='bx bx-cart'></i>Register</a></li>
+        <li class="{% if url == 'pos-transactions' %}active{% endif %}"><a href="{% url 'pos-transactions' %}"><i class='bx bx-receipt'></i>Transactions</a></li>
+    </ul>
+    {% if user.is_owner %}
+    <div class="nav-section">Owner</div>
+    <ul>
+        <li class="{% if url == 'pos-menu' or url == 'pos-recipe' %}active{% endif %}"><a href="{% url 'pos-menu' %}"><i class='bx bx-food-menu'></i>Menu &amp; Recipes</a></li>
+        <li class="{% if url == 'pos-inventory' %}active{% endif %}"><a href="{% url 'pos-inventory' %}"><i class='bx bx-package'></i>Inventory</a></li>
+        <li class="{% if url == 'pos-export' %}active{% endif %}"><a href="{% url 'pos-export' %}"><i class='bx bx-export'></i>Export to CraveCast</a></li>
+        <li><a href="{% url 'admin:index' %}"><i class='bx bx-cog'></i>Users &amp; Store</a></li>
+    </ul>
+    {% endif %}
+    <div class="side-foot">
+        <div class="user-chip">
+            <div class="avatar">{{ user.username|first|upper }}</div>
+            <div>{{ user }}<small>{{ user.get_role_display }}</small></div>
+        </div>
+        <div class="side-btns">
+            <button type="button" id="themeBtn"><i class='bx bx-adjust'></i>Theme</button>
+            <form method="post" action="{% url 'logout' %}" style="flex:1; display:flex;">{% csrf_token %}
+                <button type="submit"><i class='bx bx-log-out'></i>Logout</button>
+            </form>
+        </div>
+    </div>
+</aside>
+{% endwith %}
+
+<main class="content">
+    {% block content %}{% endblock %}
+</main>
+
+<div class="toasts" id="toasts">
+    {% for m in messages %}<div class="toast {{ m.tags }}">{{ m }}</div>{% endfor %}
+</div>
+
+<script>
+function showToast(message, type) {
+    const t = document.createElement('div');
+    t.className = 'toast ' + (type || 'success');
+    t.textContent = message;
+    document.getElementById('toasts').appendChild(t);
+    setTimeout(() => t.remove(), 6000);
+}
+document.querySelectorAll('#toasts .toast').forEach((t) => setTimeout(() => t.remove(), 5000));
+document.getElementById('themeBtn').addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('pos-theme', next); } catch (e) {}
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

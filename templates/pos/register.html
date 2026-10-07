@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}CraveCast - POS Register{% endblock %}
+
+{% block extra_css %}
+    .pos-wrap { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:18px; align-items:start; }
+    @media (max-width: 1100px) { .pos-wrap { grid-template-columns:1fr; } }
+
+    .pos-search { width:100%; padding:11px 14px; border-radius:10px; border:1px solid var(--border);
+                  background:var(--surface2); color:var(--text); font:inherit; font-size:14px; margin-bottom:12px; }
+    .cat-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+    .cat-btn { padding:7px 16px; border-radius:20px; border:1px solid var(--border); background:var(--surface);
+               color:var(--text-muted); font:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
+    .cat-btn:hover { color:var(--text); border-color:var(--border-hover); }
+    .cat-btn.active { background:var(--red); border-color:var(--red); color:var(--accent-contrast); }
+
+    .menu-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; }
+    .menu-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 14px;
+                 text-align:left; cursor:pointer; font:inherit; color:var(--text); transition:all .2s; min-height:96px;
+                 display:flex; flex-direction:column; justify-content:space-between; gap:8px; }
+    .menu-card:hover { border-color:var(--red); transform:translateY(-2px); }
+    .menu-card:active { transform:scale(.97); }
+    .menu-name { font-weight:600; font-size:14px; line-height:1.3; }
+    .menu-price { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-weight:800; color:var(--red); font-size:16px; }
+    .menu-cat { font-size:11px; color:var(--text-dim); }
+
+    .order-card { position:sticky; top:20px; display:flex; flex-direction:column; max-height:calc(100vh - 120px); }
+    .order-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .order-head h3 { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:17px; font-weight:800; }
+    .order-lines { overflow:auto; flex:1; min-height:80px; margin:0 -4px; padding:0 4px; }
+    .o-line { padding:10px 0; border-bottom:1px solid var(--border); }
+    .o-top { display:flex; justify-content:space-between; gap:8px; font-size:14px; }
+    .o-name { font-weight:600; }
+    .o-amt { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-weight:700; white-space:nowrap; text-align:right; }
+    .o-amt small { display:block; color:var(--green); font-family:'Aptos', 'Segoe UI', sans-serif; font-weight:600; font-size:11px; }
+    .o-ctrl { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; color:var(--text-muted); flex-wrap:wrap; }
+    .q-btn { width:26px; height:26px; border-radius:7px; border:1px solid var(--border); background:var(--surface2);
+             color:var(--text); cursor:pointer; font-size:15px; line-height:1; }
+    .q-btn:hover { border-color:var(--border-hover); }
+    .q-val { min-width:18px; text-align:center; font-weight:700; color:var(--text); }
+    .sc-ctrl { margin-left:auto; display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:8px; background:var(--green-dim); color:var(--green); font-weight:600; }
+    .empty-order { text-align:center; color:var(--text-dim); padding:36px 0; font-size:13px; }
+
+    .disc-box { border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0; }
+    .disc-box legend { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); padding:0 6px; }
+    .disc-types { display:flex; gap:14px; margin-bottom:8px; font-size:13px; }
+    .disc-types label { display:flex; gap:6px; align-items:center; cursor:pointer; }
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .pos-input { width:100%; padding:9px 11px; border-radius:9px; border:1px solid var(--border); background:var(--surface2);
+                 color:var(--text); font:inherit; font-size:13px; }
+    .pos-input:focus { outline:none; border-color:var(--red); }
+    .hint { font-size:11px; color:var(--text-dim); margin-top:6px; }
+
+    .sum-table { width:100%; font-size:13px; border-collapse:collapse; }
+    .sum-table td { padding:3px 0; }
+    .sum-table td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+    .sum-table .disc td { color:var(--green); }
+    .sum-table .total td { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:22px; font-weight:800; padding-top:8px; border-top:1px solid var(--border); }
+
+    .pay-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .pay-row label { font-size:11px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px; }
+    .quick-cash { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+    .quick-cash button { flex:1; padding:6px 0; border-radius:8px; border:1px solid var(--border); background:var(--surface2);
+                         color:var(--text-muted); font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+    .quick-cash button:hover { color:var(--text); border-color:var(--border-hover); }
+    .pos-err { color:var(--red); font-size:12px; min-height:18px; margin-top:6px; }
+    .pos-actions { display:grid; grid-template-columns:1fr 2fr; gap:8px; margin-top:6px; }
+    .pos-actions .btn { justify-content:center; padding:13px; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+    .done-box { text-align:center; }
+    .done-box .big { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:34px; font-weight:800; color:var(--green); margin:6px 0 2px; }
+    .done-box p { color:var(--text-muted); font-size:13px; }
+    .done-actions { display:flex; gap:8px; margin-top:18px; }
+    .done-actions .btn { flex:1; justify-content:center; }
+    .pos-modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:3000; }
+    .pos-modal[hidden] { display:none; }
+    .pos-modal-box { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:26px; width:min(380px, 92vw); }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>POS Register</h1>
+        <p>Tap products, apply Senior Citizen / PWD discounts, and charge</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'pos-transactions' %}" class="btn btn-ghost"><i class='bx bx-receipt'></i> Transactions</a>
+        {% if user.is_owner %}
+        <a href="{% url 'pos-menu' %}" class="btn btn-ghost"><i class='bx bx-food-menu'></i> Menu & Recipes</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if not has_menu %}
+<div class="card" style="text-align:center; padding:50px 20px;">
+    <div style="font-size:40px;">🧋</div>
+    <h3 style="font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; margin:10px 0 6px;">No menu items yet</h3>
+    <p style="color:var(--text-muted); font-size:13px;">
+        {% if user.is_owner %}Add products and prices in <a href="{% url 'pos-menu' %}" style="color:var(--red);">Menu &amp; Recipes</a> to start selling.
+        {% else %}Ask the owner to set up the menu and prices.{% endif %}
+    </p>
+</div>
+{% else %}
+<div class="pos-wrap">
+    <section>
+        <input type="search" class="pos-search" id="search" placeholder="Search product…" autocomplete="off">
+        <div class="cat-bar" id="cats"></div>
+        <div class="menu-grid" id="menu"></div>
+    </section>
+
+    <section class="card order-card">
+        <div class="order-head">
+            <h3>Current Order</h3>
+            <span class="badge badge-blue" id="itemCount">0 items</span>
+        </div>
+        <div class="order-lines" id="lines"></div>
+
+        <fieldset class="disc-box">
+            <legend>Senior Citizen / PWD — 20% + VAT exempt</legend>
+            <div class="disc-types">
+                <label><input type="radio" name="dtype" value="SC" checked> Senior Citizen</label>
+                <label><input type="radio" name="dtype" value="PWD"> PWD</label>
+            </div>
+            <div class="row2">
+                <input class="pos-input" id="hName" placeholder="Cardholder name" autocomplete="off">
+                <input class="pos-input" id="hId" placeholder="SC / PWD ID no." autocomplete="off">
+            </div>
+            <div class="hint">Use the green <b>SC/PWD</b> counter on each item the cardholder will consume.</div>
+        </fieldset>
+
+        <table class="sum-table" id="sum"></table>
+
+        <div class="pay-row">
+            <div><label for="cash">Cash received</label><input class="pos-input" type="number" id="cash" min="0" step="0.01" placeholder="0.00"></div>
+            <div><label for="change">Change</label><input class="pos-input" id="change" readonly></div>
+        </div>
+        <div class="quick-cash" id="quick"></div>
+        <div class="pos-err" id="err"></div>
+        <div class="pos-actions">
+            <button class="btn btn-ghost" id="clearBtn" type="button">Clear</button>
+            <button class="btn btn-primary" id="payBtn" type="button"><i class='bx bx-check-circle'></i> Charge</button>
+        </div>
+    </section>
+</div>
+
+<div class="pos-modal" id="doneModal" hidden>
+    <div class="pos-modal-box done-box">
+        <i class='bx bx-check-circle' style="font-size:44px; color:var(--green);"></i>
+        <p id="doneOr"></p>
+        <div class="big" id="doneChange"></div>
+        <p>Change</p>
+        <div class="done-actions">
+            <a class="btn btn-ghost" id="printBtn" target="_blank" rel="noopener"><i class='bx bx-printer'></i> Receipt</a>
+            <button class="btn btn-primary" id="newBtn" type="button">New Order</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if has_menu %}
+<script>
+(function () {
+    const MENU       = {{ menu_json|safe }};
+    const VAT_RATE   = {{ vat_rate }};
+    const DISC_RATE  = {{ disc_rate }};
+    const CHECKOUT   = "{% url 'pos-checkout' %}";
+    const RECEIPT    = "{% url 'pos-receipt' pk=0 %}";
+    const POS_CSRF   = "{{ csrf_token }}";
+
+    let cart = [];            // {id, name, price, qty, dqty}
+    let activeCat = 'All';
+    const $ = (id) => document.getElementById(id);
+    const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+    const peso = (n) => '₱' + n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    // Same formula as pos/services.py (server re-computes and is the source of truth)
+    function totals() {
+        let reg = 0, disc = 0;
+        cart.forEach((l) => { reg += l.price * (l.qty - l.dqty); disc += l.price * l.dqty; });
+        const vatable = reg / (1 + VAT_RATE), vat = reg - vatable;
+        const exempt = disc / (1 + VAT_RATE), lessVat = disc - exempt, discount = exempt * DISC_RATE;
+        return { gross: r2(reg + disc), vatable: r2(vatable), vat: r2(vat), exempt: r2(exempt),
+                 lessVat: r2(lessVat), discount: r2(discount), total: r2(reg + exempt - discount), hasDisc: disc > 0 };
+    }
+
+    function renderCats() {
+        const cats = ['All', ...new Set(MENU.map((m) => m.category))];
+        $('cats').innerHTML = cats.map((c) =>
+            `<button type="button" class="cat-btn ${c === activeCat ? 'active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+    }
+    function renderMenu() {
+        const q = $('search').value.trim().toLowerCase();
+        const items = MENU.filter((m) => (activeCat === 'All' || m.category === activeCat) && m.name.toLowerCase().includes(q));
+        $('menu').innerHTML = items.map((m) => `
+            <button type="button" class="menu-card" data-id="${m.id}">
+                <div><div class="menu-name">${esc(m.name)}</div><div class="menu-cat">${esc(m.category)}</div></div>
+                <div class="menu-price">${peso(m.price)}</div>
+            </button>`).join('') || `<div class="empty-order" style="grid-column:1/-1">No products match.</div>`;
+    }
+    function renderCart() {
+        const count = cart.reduce((a, l) => a + l.qty, 0);
+        $('itemCount').textContent = count + (count === 1 ? ' item' : ' items');
+        $('lines').innerHTML = cart.length ? cart.map((l, i) => {
+            const net = l.price * (l.qty - l.dqty) + l.price * l.dqty / (1 + VAT_RATE) * (1 - DISC_RATE);
+            const saved = r2(l.price * l.qty - net);
+            return `<div class="o-line">
+                <div class="o-top"><span class="o-name">${esc(l.name)}</span>
+                    <span class="o-amt">${peso(l.price * l.qty)}${saved > 0 ? `<small>−${peso(saved)}</small>` : ''}</span></div>
+                <div class="o-ctrl">
+                    <button type="button" class="q-btn" data-act="dec" data-i="${i}">−</button>
+                    <span class="q-val">${l.qty}</span>
+                    <button type="button" class="q-btn" data-act="inc" data-i="${i}">+</button>
+                    <span>× ${peso(l.price)}</span>
+                    <span class="sc-ctrl">SC/PWD
+                        <button type="button" class="q-btn" data-act="ddec" data-i="${i}">−</button>
+                        <span class="q-val">${l.dqty}</span>
+                        <button type="button" class="q-btn" data-act="dinc" data-i="${i}">+</button>
+                    </span>
+                </div></div>`;
+        }).join('') : `<div class="empty-order">Tap a product to add it to the order.</div>`;
+        renderSummary();
+    }
+    function renderSummary() {
+        const t = totals();
+        let h = `<tr><td>Subtotal (VAT incl.)</td><td>${peso(t.gross)}</td></tr>`;
+        if (t.hasDisc) {
+            h += `<tr class="disc"><td>Less: VAT 12% (exempt)</td><td>−${peso(t.lessVat)}</td></tr>
+                  <tr class="disc"><td>Less: SC/PWD discount 20%</td><td>−${peso(t.discount)}</td></tr>`;
+        }
+        h += `<tr class="total"><td>TOTAL</td><td>${peso(t.total)}</td></tr>`;
+        $('sum').innerHTML = h;
+
+        const quick = [...new Set([t.total, 100, 200, 500, 1000].filter((v) => v >= t.total && v > 0))].slice(0, 4);
+        $('quick').innerHTML = quick.map((v) => `<button type="button" data-cash="${v}">${v === t.total ? 'Exact' : peso(v).replace('.00', '')}</button>`).join('');
+        updateChange();
+    }
+    function updateChange() {
+        const t = totals(), cash = parseFloat($('cash').value) || 0;
+        $('change').value = t.total > 0 && cash >= t.total ? peso(r2(cash - t.total)) : '';
+    }
+
+    function add(id) {
+        const m = MENU.find((x) => x.id === id);
+        const l = cart.find((x) => x.id === id);
+        if (l) l.qty++; else cart.push({ id: m.id, name: m.name, price: m.price, qty: 1, dqty: 0 });
+        $('err').textContent = '';
+        renderCart();
+    }
+    function clearOrder() {
+        cart = []; $('cash').value = ''; $('hName').value = ''; $('hId').value = ''; $('err').textContent = '';
+        renderCart();
+    }
+
+    $('cats').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-cat]'); if (!b) return;
+        activeCat = b.dataset.cat; renderCats(); renderMenu();
+    });
+    $('search').addEventListener('input', renderMenu);
+    $('menu').addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) add(+b.dataset.id); });
+    $('lines').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-act]'); if (!b) return;
+        const l = cart[+b.dataset.i];
+        if (b.dataset.act === 'inc') l.qty++;
+        if (b.dataset.act === 'dec') { l.qty--; l.dqty = Math.min(l.dqty, l.qty); }
+        if (b.dataset.act === 'dinc' && l.dqty < l.qty) l.dqty++;
+        if (b.dataset.act === 'ddec' && l.dqty > 0) l.dqty--;
+        cart = cart.filter((x) => x.qty > 0);
+        $('err').textContent = '';
+        renderCart();
+    });
+    $('quick').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-cash]'); if (!b) return;
+        $('cash').value = (+b.dataset.cash).toFixed(2); updateChange();
+    });
+    $('cash').addEventListener('input', updateChange);
+    $('clearBtn').addEventListener('click', clearOrder);
+    $('newBtn').addEventListener('click', () => { $('doneModal').hidden = true; clearOrder(); $('search').focus(); });
+
+    $('payBtn').addEventListener('click', async () => {
+        const t = totals();
+        const cash = parseFloat($('cash').value) || 0;
+        const dtype = document.querySelector('input[name=dtype]:checked').value;
+        const name = $('hName').value.trim(), hid = $('hId').value.trim();
+        if (!cart.length) return ($('err').textContent = 'Add at least one item.');
+        if (t.hasDisc && (!name || !hid)) return ($('err').textContent = `Enter the ${dtype} cardholder's name and ID number.`);
+        if (cash < t.total) return ($('err').textContent = `Insufficient cash. Total is ${peso(t.total)}.`);
+
+        $('payBtn').disabled = true;
+        try {
+            const res = await fetch(CHECKOUT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': POS_CSRF },
+                body: JSON.stringify({
+                    items: cart.map((l) => ({ menu_item_id: l.id, quantity: l.qty, discounted_qty: l.dqty })),
+                    cash, discount_type: t.hasDisc ? dtype : '', holder_name: name, holder_id: hid,
+                }),
+            });
+            const data = await res.json();
+            if (!data.ok) { $('err').textContent = data.error; return; }
+
+            $('doneOr').textContent = `OR #${data.receipt_no} · Total ${peso(data.total_due)}`;
+            $('doneChange').textContent = peso(data.change);
+            $('printBtn').href = RECEIPT.replace('/0/', `/${data.id}/`) + '?print=1';
+            $('doneModal').hidden = false;
+
+            if (typeof showToast === 'function') {
+                if (data.no_recipe.length) showToast(`No recipe for: ${data.no_recipe.join(', ')} — inventory not deducted.`, 'info');
+                const low = [...new Map(data.low_stock.map((x) => [x.item, x])).values()];
+                if (low.length) showToast(`Low stock: ${low.map((x) => `${x.item} (${x.remaining} ${x.unit})`).join(', ')}`, 'error');
+            }
+        } catch (err) {
+            $('err').textContent = 'Could not reach the server. The sale was not saved.';
+        } finally {
+            $('payBtn').disabled = false;
+        }
+    });
+
+    renderCats(); renderMenu(); renderCart();
+})();
+</script>
+{% endif %}
+{% endblock %}

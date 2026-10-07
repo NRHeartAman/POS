@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory — CraveCast POS{% endblock %}
+
+{% block extra_css %}
+    .inv-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start; }
+    @media (max-width: 1100px) { .inv-layout { grid-template-columns:1fr; } }
+    .stock { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-weight:700; }
+    .adj { display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
+    .adj input, .adj select { padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font:inherit; font-size:12px; }
+    .adj input { width:80px; }
+    .adj button { padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+    .adj button:hover { border-color:var(--red); color:var(--red); }
+    .section-title { font-family:'Aptos Display', 'Aptos', 'Segoe UI', sans-serif; font-size:17px; font-weight:800; margin:26px 0 12px; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Inventory</h1>
+        <p>Ingredients are deducted automatically by recipe on every sale.
+           {% if low_count %}<span class="badge badge-red" style="margin-left:6px;">{{ low_count }} low</span>{% endif %}</p>
+    </div>
+</div>
+
+<div class="inv-layout">
+    <div class="card table-wrap">
+        <h3>Ingredients ({{ ingredients|length }})</h3>
+        <table class="table">
+            <thead><tr><th>Ingredient</th><th class="n">In Stock</th><th>Status</th><th>Update Stock</th><th>Low-stock level</th></tr></thead>
+            <tbody>
+            {% for i in ingredients %}
+                <tr>
+                    <td>{{ i.name }}<div class="muted">used in {{ i.used_in_count }} recipe{{ i.used_in_count|pluralize }}</div></td>
+                    <td class="n stock">{{ i.stock_qty|floatformat:"-2" }} <span class="muted">{{ i.unit }}</span></td>
+                    <td>{% if i.is_low %}<span class="badge badge-red">Low</span>{% else %}<span class="badge badge-green">OK</span>{% endif %}</td>
+                    <td>
+                        <form method="post" class="adj">{% csrf_token %}
+                            <input type="hidden" name="pk" value="{{ i.pk }}">
+                            <select name="action" title="What happened?">
+                                <option value="restock">+ Restock</option>
+                                <option value="waste">− Waste</option>
+                                <option value="adjust">= Count</option>
+                            </select>
+                            <input name="qty" type="number" min="0" step="any" placeholder="{{ i.unit }}" required>
+                            <input name="note" placeholder="Note" style="width:90px;">
+                            <button type="submit">Save</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="post" class="adj">{% csrf_token %}
+                            <input type="hidden" name="action" value="settings"><input type="hidden" name="pk" value="{{ i.pk }}">
+                            <input name="low" type="number" min="0" step="any" value="{{ i.low_stock_level|floatformat:'-2' }}" title="Warn at or below">
+                            <input name="unit" value="{{ i.unit }}" style="width:52px;" title="Unit">
+                            <button type="submit">Set</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty">No ingredients yet. Add milk, pearls, powders, cups, etc.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="muted" style="margin-top:12px;"><b>Restock</b> adds, <b>Waste</b> subtracts spoiled stock, <b>Count</b> sets the stock to what you physically counted.</p>
+    </div>
+
+    <div class="card">
+        <h3>Add Ingredient</h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div class="form-group"><label>Name</label><input name="name" required placeholder="e.g. Fresh Milk"></div>
+            <div class="form-group"><label>Unit</label>
+                <input name="unit" list="units" value="mL" required>
+                <datalist id="units"><option value="mL"><option value="L"><option value="g"><option value="kg"><option value="pcs"></datalist>
+            </div>
+            <div class="form-group"><label>Opening stock</label><input name="stock" type="number" min="0" step="any" value="0"></div>
+            <div class="form-group"><label>Warn when at or below</label><input name="low" type="number" min="0" step="any" value="0"></div>
+            <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;"><i class='bx bx-plus'></i> Add Ingredient</button>
+        </form>
+    </div>
+</div>
+
+<div class="section-title">Recent Stock Movements</div>
+<div class="card table-wrap">
+    <table class="table">
+        <thead><tr><th>When</th><th>Ingredient</th><th>Reason</th><th class="n">Change</th><th class="n">Stock After</th><th>By</th><th>Note</th></tr></thead>
+        <tbody>
+        {% for m in movements %}
+            <tr>
+                <td>{{ m.created_at|date:"M j, h:i A" }}</td>
+                <td>{{ m.ingredient.name }}</td>
+                <td><span class="badge {% if m.reason == 'sale' %}badge-blue{% elif m.reason == 'restock' %}badge-green{% elif m.reason == 'waste' %}badge-red{% else %}badge-amber{% endif %}">{{ m.get_reason_display }}</span></td>
+                <td class="n">{% if m.change > 0 %}+{% endif %}{{ m.change|floatformat:"-2" }} {{ m.ingredient.unit }}</td>
+                <td class="n">{{ m.stock_after|floatformat:"-2" }}</td>
+                <td>{{ m.user|default:"—" }}</td>
+                <td class="muted">{{ m.note }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="empty">No stock movements yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Export to CraveCast — CraveCast POS{% endblock %}
+
+{% block extra_css %}
+    .range { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .range .form-group { margin:0; }
+    .steps { margin:4px 0 0 18px; font-size:13px; color:var(--text-muted); line-height:1.8; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Export to CraveCast</h1>
+        <p>Download POS sales as a CSV that CraveCast's <b>Upload Data &amp; Sales</b> page accepts</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+    <form method="get" class="range">
+        <div class="form-group"><label>From</label><input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></div>
+        <div class="form-group"><label>To</label><input type="date" name="end" value="{{ end|date:'Y-m-d' }}"></div>
+        <button class="btn btn-ghost" type="submit"><i class='bx bx-search'></i> Preview</button>
+        <button class="btn btn-primary" type="submit" name="download" value="1"><i class='bx bx-download'></i> Download CSV</button>
+    </form>
+    <ol class="steps">
+        <li>Pick the dates and click <b>Download CSV</b>.</li>
+        <li>In CraveCast, log in as Owner → <b>Upload Data &amp; Sales</b> → upload the file.</li>
+        <li>CraveCast adds the temperature for each date and uses the sales for forecasting.</li>
+    </ol>
+</div>
+
+<div class="card table-wrap">
+    <h3>Preview — {{ start|date:"M j" }} to {{ end|date:"M j, Y" }}</h3>
+    <table class="table">
+        <thead><tr><th>Date</th><th>Product Name</th><th class="n">Quantity</th><th class="n">Unit Price</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+            <tr><td>{{ r.day|date:"Y-m-d" }}</td><td>{{ r.product_name }}</td><td class="n">{{ r.qty }}</td><td class="n">₱{{ r.unit_price }}</td></tr>
+        {% empty %}
+            <tr><td colspan="4" class="empty">No POS sales in this date range.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="muted" style="margin-top:10px;">One row per product per day — the same format CraveCast uses. Unit Price is the menu price (before Senior/PWD discounts).</p>
+</div>
+{% endblock %}

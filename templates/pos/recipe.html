@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Recipe: {{ item.name }} — CraveCast POS{% endblock %}
+
+{% block extra_css %}
+    .recipe-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start; }
+    @media (max-width: 1000px) { .recipe-layout { grid-template-columns:1fr; } }
+    .icon-btn { padding:6px 9px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted); cursor:pointer; }
+    .icon-btn:hover { color:var(--red); border-color:var(--red); }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ item.name }}</h1>
+        <p>₱{{ item.price }} · {{ item.category }} — ingredients used for <b>one serving</b></p>
+    </div>
+    <a href="{% url 'pos-menu' %}" class="btn btn-ghost"><i class='bx bx-arrow-back'></i> Back to Menu</a>
+</div>
+
+<div class="recipe-layout">
+    <div class="card table-wrap">
+        <h3>Recipe
+            {% if can_make is not None %}
+                <span class="badge {% if can_make < 10 %}badge-red{% else %}badge-green{% endif %}" style="margin-left:8px;">Can make {{ can_make }} more</span>
+            {% endif %}
+        </h3>
+        <table class="table">
+            <thead><tr><th>Ingredient</th><th class="n">Per Serving</th><th class="n">In Stock</th><th class="n">Enough For</th><th></th></tr></thead>
+            <tbody>
+            {% for l in lines %}
+                <tr>
+                    <td>{{ l.ingredient.name }}</td>
+                    <td class="n">{{ l.qty_per_serving|floatformat:"-2" }} {{ l.ingredient.unit }}</td>
+                    <td class="n">{{ l.ingredient.stock_qty|floatformat:"-2" }} {{ l.ingredient.unit }}</td>
+                    <td class="n">{{ l.servings }} cup{{ l.servings|pluralize }}</td>
+                    <td class="n">
+                        <form method="post">{% csrf_token %}
+                            <input type="hidden" name="action" value="remove"><input type="hidden" name="line" value="{{ l.pk }}">
+                            <button class="icon-btn" type="submit" title="Remove"><i class='bx bx-trash'></i></button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty">No ingredients yet — this product won't deduct inventory when sold.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Add / Update Ingredient</h3>
+        {% if ingredients %}
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div class="form-group"><label>Ingredient</label>
+                <select name="ingredient" required>
+                    {% for i in ingredients %}<option value="{{ i.pk }}">{{ i.name }} ({{ i.unit }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label>Amount per serving</label><input name="qty" type="number" min="0.001" step="any" required placeholder="e.g. 200"></div>
+            <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;"><i class='bx bx-plus'></i> Save to Recipe</button>
+        </form>
+        <p class="muted" style="margin-top:12px;">Adding an ingredient that's already in the recipe updates its amount.</p>
+        {% else %}
+        <p class="muted">No ingredients in Inventory yet. <a href="{% url 'pos-inventory' %}" style="color:var(--red);">Add ingredients first</a>.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
